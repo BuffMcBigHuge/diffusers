@@ -68,7 +68,8 @@ accelerate launch --num_cpu_threads_per_process 8 train_dreambooth.py \
   --sample_batch_size=0 \
   --max_train_steps=$TRAIN_STEPS \
   --save_interval=400 \
-  --save_sample_prompt="photo of ${UID}" \
+  --save_sample_prompt="" \
+  --n_save_sample=0 \
   --instance_prompt="photo of ${UID}" \
   --class_prompt="photo of a $CLASS_KEY" \
   --instance_data_dir="$HOME/gpu-instance-s3fs/uploads/$UID"\
