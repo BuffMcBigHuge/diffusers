@@ -1,6 +1,29 @@
 #!/usr/bin/env bash -l
 
-# Init Script
+# Init Script for AWS LINUX UBUNTU g5.2xlarge
+
+# Requires AWS USER VARIABLES (PROVISIONING)
+: '
+echo export ACCESS_KEY_ID="**" | sudo tee -a /etc/profile
+echo export SECRET_ACCESS_KEY="**" | sudo tee -a /etc/profile
+echo export HUGGINGFACE_TOKEN="**" | sudo tee -a /etc/profile
+echo export GITHUB_ACCESS_TOKEN="**" | sudo tee -a /etc/profile
+'
+
+# PYTHON
+sudo add-apt-repository ppa:deadsnakes/ppa -y
+sudo apt update && sudo apt upgrade -y
+sudo apt install python3.10 python3-pip python3-venv python-is-python3 -y
+
+# CONDA
+cd ${HOME}
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
+bash ~/miniconda.sh -b -p $HOME/miniconda
+export PATH=${HOME}/miniconda/bin:$PATH
+conda init zsh
+conda init bash 
+eval "$(conda shell.bash hook)"
+conda update -n base -c defaults conda -y
 
 # HUGGINGFACE
 # Ensure HUGGINGFACE_TOKEN is stored as env variables (AWS User data)
@@ -31,19 +54,19 @@ cd ${HOME}
 '
 
 # API
+cd ${HOME}
 sudo apt-get install apt-transport-https curl software-properties-common -y
 sudo curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
 sudo apt-get install -y nodejs
-npm install pm2 -g
-cd ${HOME}
+sudo npm install pm2 -g
 git clone https://${GITHUB_ACCESS_TOKEN}@github.com/BuffMcBigHuge/gpu-instance-api.git
 cd gpu-instance-api
 npm install
-sudo npm install pm2 -g
 
 # S3FS
 # Save S3FS AWS Credentials
 # Ensure ACCESS_KEY_ID and SECRET_ACCESS_KEY are stored as env variables (AWS User data)
+cd ${HOME}
 file=".passwd-s3fs"
 echo "$ACCESS_KEY_ID:$SECRET_ACCESS_KEY" > $file
 cat $file
@@ -52,22 +75,22 @@ sudo apt install s3fs -y
 mkdir gpu-instance-s3fs
 s3fs gpu-instance-s3fs ${HOME}/gpu-instance-s3fs -o passwd_file=${HOME}/.passwd-s3fs
 
-# Reboot Script 
+# REBOOT SCRIPTS
+cd ${HOME}
 sudo tee /etc/rc.local <<EOF
 #!/bin/bash
 su ubuntu -c '\
-s3fs gpu-instance-s3fs ${HOME}/gpu-instance-s3fs -o passwd_file=${HOME}/.passwd-s3fs & \
-cd ${HOME}/stable-diffusion-webui && conda run -n ldm && ./webui.sh & \
-cd ${HOME}/gpu-instance-api && pm2 start ecosystem.config.js --env production'
+s3fs gpu-instance-s3fs ${HOME}/gpu-instance-s3fs -o passwd_file=${HOME}/.passwd-s3fs && \
+cd ${HOME}/gpu-instance-api && pm2 start ecosystem.config.js --env production && \
+export PATH=${HOME}/miniconda/bin:$PATH && \
+cd ${HOME}/stable-diffusion-webui && conda run --no-capture-output -n webui ./webui.sh'
 EOF
 sudo chmod +x /etc/rc.local
 ##
 
-conda init zsh
-conda init bash 
-eval "$(conda shell.bash hook)"
-conda update -n base -c defaults conda -y
-conda create --name diffusers python=3.9 -y
+# XFORMERS
+cd ${HOME}
+conda create --name diffusers python=3.10.6 -y
 conda activate diffusers
 conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.6 -c pytorch -c conda-forge -y
 pip install -U --pre triton
@@ -79,20 +102,23 @@ pip install -r requirements.txt
 pip install functorch==0.2.1 ninja bitsandbytes
 # -> Once installed, set the flag _is_functorch_available = True in xformers/__init__.py
 sed -i 's/_is_functorch_available: bool = False/_is_functorch_available: bool = True/g' xformers/__init__.py
-pip install -e .
+# pip install -e .
+pip install --verbose --no-deps -e .
 # python setup.py clean && python setup.py develop
+
+# DIFFUSERS
+cd ${HOME}
 git clone https://github.com/BuffMcBigHuge/diffusers.git
 cd diffusers/examples/dreambooth
 pip install git+https://github.com/BuffMcBigHuge/diffusers.git
 pip install -r requirements.txt
-pip install deepspeed
-pip install pyheif
-pip install piexif
-pip install python-resize-image
-chmod +x launch.sh
+pip install deepspeed pyheif piexif python-resize-image -y
+sudo chmod +x launch.sh
+conda deactivate
 
 # huggingface-cli login
 # accelerate config
+cd ${HOME}
 mkdir -p  ${HOME}/.cache/huggingface/accelerate
 sudo tee ${HOME}/.cache/huggingface/accelerate/default_config.yml <<EOF
 compute_environment: LOCAL_MACHINE
@@ -112,17 +138,38 @@ EOF
 sudo chmod 664 ${HOME}/.cache/huggingface/accelerate/default_config.yml
 
 # AUTOMATIC1111
-git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git
+cd ${HOME}
+git clone https://github.com/BuffMcBigHuge/stable-diffusion-webui.git
 cd stable-diffusion-webui
-conda create --name ldm python=3.10.6 -y
-conda activate ldm
-bash webui.sh
+conda create --name webui python=3.10.6 -y
+conda activate webui
 pip install -r requirements.txt
+conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.6 -c pytorch -c conda-forge -y
+pip install git+https://github.com/facebookresearch/xformers.git@v0.0.13#egg=xformers
+# pip install torchvision==0.13.1
+# pip install torch==1.12.1+cu113 --extra-index-url https://download.pytorch.org/whl/cu113
 # Update webui-user
 sudo tee -a webui-user.sh <<EOF
 
-export COMMANDLINE_ARGS="--ckpt-dir ../gpu-instance-s3fs/models --api --listen"
+export COMMANDLINE_ARGS="--ckpt-dir ../gpu-instance-s3fs/models --api --listen --xformers"
 EOF
 
-# Launch
-bash webui.sh
+# Activate VENV environment and manually install xformers again
+# webui.sh script doesn't install xformers successfully
+python -m venv venv
+source venv/bin/activate
+cd ${HOME}/xformers
+pip install --verbose --no-deps -e .
+pip install -r requirements.txt
+pip install functorch==0.2.1 ninja bitsandbytes
+pip install -U --pre triton
+deactivate
+
+conda deactivate
+# bash webui.sh
+
+# DRIVERS
+sudo apt-get install nvidia-driver-520 nvidia-utils-520 -y
+
+# REBOOT
+sudo reboot
