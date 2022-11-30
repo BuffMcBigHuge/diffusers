@@ -112,7 +112,7 @@ git clone https://github.com/BuffMcBigHuge/diffusers.git
 cd diffusers/examples/dreambooth
 pip install git+https://github.com/BuffMcBigHuge/diffusers.git
 pip install -r requirements.txt
-pip install deepspeed pyheif piexif python-resize-image -y
+pip install deepspeed pyheif piexif python-resize-image
 sudo chmod +x launch.sh
 conda deactivate
 
@@ -144,8 +144,6 @@ cd stable-diffusion-webui
 conda create --name webui python=3.10.6 -y
 conda activate webui
 pip install -r requirements.txt
-conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.6 -c pytorch -c conda-forge -y
-pip install git+https://github.com/facebookresearch/xformers.git@v0.0.13#egg=xformers
 # pip install torchvision==0.13.1
 # pip install torch==1.12.1+cu113 --extra-index-url https://download.pytorch.org/whl/cu113
 # Update webui-user
@@ -159,17 +157,19 @@ EOF
 python -m venv venv
 source venv/bin/activate
 cd ${HOME}/xformers
+conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.6 -c pytorch -c conda-forge -y
+pip install git+https://github.com/facebookresearch/xformers.git@v0.0.13#egg=xformers
+pip install -U --pre triton
 pip install --verbose --no-deps -e .
 pip install -r requirements.txt
 pip install functorch==0.2.1 ninja bitsandbytes
-pip install -U --pre triton
 deactivate
 
 conda deactivate
 # bash webui.sh
 
 # DRIVERS
-sudo apt-get install nvidia-driver-520 nvidia-utils-520 -y
+# sudo apt-get install nvidia-driver-510 nvidia-utils-510 -y
 
 # REBOOT
 sudo reboot
