@@ -1,6 +1,8 @@
 #!/usr/bin/env bash -l
 
-# Init Script for AWS LINUX UBUNTU g5.2xlarge
+# INIT SCRIPT
+# AWS LINUX UBUNTU g5.2xlarge
+# DEEP LEARNING AMI PYTORCH 1.13.0
 
 # Requires AWS USER VARIABLES (PROVISIONING)
 : '
@@ -10,33 +12,28 @@ echo export HUGGINGFACE_TOKEN="**" | sudo tee -a /etc/profile
 echo export GITHUB_ACCESS_TOKEN="**" | sudo tee -a /etc/profile
 '
 
-# PYTHON
-sudo add-apt-repository ppa:deadsnakes/ppa -y
-sudo apt update && sudo apt upgrade -y
-sudo apt install python3.10 python3-pip python3-venv python-is-python3 -y
-
-# CONDA
-cd ${HOME}
-wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
-bash ~/miniconda.sh -b -p $HOME/miniconda
-export PATH=${HOME}/miniconda/bin:$PATH
-conda init zsh
+# CONDA (DIFFUSERS) ENV
+# Here we create a single conda environment that
+# stable-diffusion-webui and diffusers can both use
 conda init bash 
 eval "$(conda shell.bash hook)"
 conda update -n base -c defaults conda -y
+conda create --name diffusers python=3.10.6 -y
+conda activate diffusers
 
 # HUGGINGFACE
-# Ensure HUGGINGFACE_TOKEN is stored as env variables (AWS User data)
+# Add hugging face and github credentials
 sudo tee ${HOME}/.git-credentials <<EOF
 https://hf_user:${HUGGINGFACE_TOKEN}@huggingface.co
 https://${GITHUB_ACCESS_TOKEN}@github.com
 EOF
-chmod 664 ${HOME}/.git-credentials
+sudo chmod 664 ${HOME}/.git-credentials
+git config --global credential.helper store
 ##
 
-# MODELS
-# TODO: Store in S3FS?
-: '
+# DOWNLOAD MODELS
+# This adds the models we use for training locally, but can also be 
+# retrieved from gpu-instance-s3fs. See launch.py in /diffusers/examples/dreambooth
 sudo apt-get install git-lfs
 git lfs install
 mkdir default-models
@@ -50,10 +47,9 @@ git clone https://huggingface.co/stabilityai/sd-vae-ft-mse
 cd sd-vae-ft-mse
 git lfs pull
 rm -rf .git
-cd ${HOME}
-'
 
-# API
+# NODE API
+# Install Node, pm2 and run API
 cd ${HOME}
 sudo apt-get install apt-transport-https curl software-properties-common -y
 sudo curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
@@ -76,100 +72,115 @@ mkdir gpu-instance-s3fs
 s3fs gpu-instance-s3fs ${HOME}/gpu-instance-s3fs -o passwd_file=${HOME}/.passwd-s3fs
 
 # REBOOT SCRIPTS
+# These commands will run as ubuntu user when the machine is restarted
+# 1) Start S3SF, mounts to gpu-instance-s3sf
+# 2) Start pm2 node API on 3000
+# 3) Start stable-diffusion-webui on port 7860
 cd ${HOME}
 sudo tee /etc/rc.local <<EOF
 #!/bin/bash
-su ubuntu -c '\
-s3fs gpu-instance-s3fs ${HOME}/gpu-instance-s3fs -o passwd_file=${HOME}/.passwd-s3fs && \
-cd ${HOME}/gpu-instance-api && pm2 start ecosystem.config.js --env production && \
-export PATH=${HOME}/miniconda/bin:$PATH && \
-cd ${HOME}/stable-diffusion-webui && conda run --no-capture-output -n webui ./webui.sh'
+su ubuntu -c 's3fs gpu-instance-s3fs ${HOME}/gpu-instance-s3fs -o passwd_file=${HOME}/.passwd-s3fs'
+su ubuntu -c 'cd ${HOME}/gpu-instance-api && pm2 start ecosystem.config.js --env production'
+su ubuntu -c 'cd ${HOME}/stable-diffusion-webui && conda run -n diffusers --no-capture-output python launch.py --ckpt-dir ../gpu-instance-s3fs/models --api --listen --xformers'
 EOF
 sudo chmod +x /etc/rc.local
 ##
 
-# XFORMERS
-cd ${HOME}
-conda create --name diffusers python=3.10.6 -y
-conda activate diffusers
-conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.6 -c pytorch -c conda-forge -y
+# DEPENDENCIES
+# These are the pip dependices for launch.py in /stable-diffusion-webui and /diffusers/examples/dreambooth
+pip install torchvision==0.13.1 torch==1.12.1+cu116 --extra-index-url https://download.pytorch.org/whl/cu116
+pip install accelerate==0.12.0 transformers ninja bitsandbytes
+pip install deepspeed pyheif piexif python-resize-image
 pip install -U --pre triton
-conda install xformers -c xformers/label/dev -y
-git clone https://github.com/facebookresearch/xformers.git
-cd xformers
-git submodule update --init --recursive
-pip install -r requirements.txt
-pip install functorch==0.2.1 ninja bitsandbytes
-# -> Once installed, set the flag _is_functorch_available = True in xformers/__init__.py
-sed -i 's/_is_functorch_available: bool = False/_is_functorch_available: bool = True/g' xformers/__init__.py
-# pip install -e .
-pip install --verbose --no-deps -e .
-# python setup.py clean && python setup.py develop
+pip install git+https://github.com/facebookresearch/xformers.git@103e863db94f712a96c34fc8e78cfd58a40adeee
 
-# DIFFUSERS
+# DREAMBOOTH
+# Installs ShivamShrirao/diffusers fork
+# This fork includes modifications to launch.sh
 cd ${HOME}
 git clone https://github.com/BuffMcBigHuge/diffusers.git
-cd diffusers/examples/dreambooth
+cd diffusers
 pip install git+https://github.com/BuffMcBigHuge/diffusers.git
-pip install -r requirements.txt
-pip install deepspeed pyheif piexif python-resize-image
-sudo chmod +x launch.sh
-conda deactivate
+sudo chmod +x ${HOME}/diffusers/examples/dreambooth/launch.sh
 
-# huggingface-cli login
-# accelerate config
+# AUTOMATIC1111 WEBUI API
+# Installs automatic1111/stable-diffusion-webui fork
+# This fork includes modifications to API override_settings (model selector)
+# and also on dependices to work well with dreambooth (transformers, diffusion)
+cd ${HOME}
+git clone https://github.com/BuffMcBigHuge/stable-diffusion-webui.git
+cd stable-diffusion-webui
+pip install -r requirements.txt
+
+# UPGRADE
+# Not sure if this is nessary anymore. SD 2.0 requirement but untest atm
+pip install --upgrade transformers==4.21.0 diffusers==0.7.2 accelerate scipy ftfy
+
+# ACCELERATE CONFIG
+# Auto configures accelerate instead of `accelerate config`
 cd ${HOME}
 mkdir -p  ${HOME}/.cache/huggingface/accelerate
-sudo tee ${HOME}/.cache/huggingface/accelerate/default_config.yml <<EOF
+sudo tee ${HOME}/.cache/huggingface/accelerate/default_config.yaml <<EOF
+command_file: null
+commands: null
 compute_environment: LOCAL_MACHINE
 deepspeed_config: {}
 distributed_type: 'NO'
 downcast_bf16: 'no'
+dynamo_backend: 'NO'
 fsdp_config: {}
+gpu_ids: all
 machine_rank: 0
 main_process_ip: null
 main_process_port: null
 main_training_function: main
+megatron_lm_config: {}
 mixed_precision: fp16
 num_machines: 1
 num_processes: 1
+rdzv_backend: static
+same_network: true
+tpu_name: null
+tpu_zone: null
 use_cpu: false
 EOF
-sudo chmod 664 ${HOME}/.cache/huggingface/accelerate/default_config.yml
+sudo chmod 664 ${HOME}/.cache/huggingface/accelerate/default_config.yaml
 
-# AUTOMATIC1111
-cd ${HOME}
-git clone https://github.com/BuffMcBigHuge/stable-diffusion-webui.git
-cd stable-diffusion-webui
-conda create --name webui python=3.10.6 -y
-conda activate webui
-pip install -r requirements.txt
-# pip install torchvision==0.13.1
-# pip install torch==1.12.1+cu113 --extra-index-url https://download.pytorch.org/whl/cu113
-# Update webui-user
-sudo tee -a webui-user.sh <<EOF
-
-export COMMANDLINE_ARGS="--ckpt-dir ../gpu-instance-s3fs/models --api --listen --xformers"
-EOF
-
-# Activate VENV environment and manually install xformers again
-# webui.sh script doesn't install xformers successfully
-python -m venv venv
-source venv/bin/activate
-cd ${HOME}/xformers
-conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.6 -c pytorch -c conda-forge -y
-pip install git+https://github.com/facebookresearch/xformers.git@v0.0.13#egg=xformers
-pip install -U --pre triton
-pip install --verbose --no-deps -e .
-pip install -r requirements.txt
-pip install functorch==0.2.1 ninja bitsandbytes
-deactivate
+# EXAMPLE LAUCH SCRIPTS
+# These are example launch scripts to test integration
+: '
+# DREAMBOOTH
+cd /home/ubuntu/diffusers/examples/dreambooth && conda run -n diffusers --no-capture-output ./launch.sh -u "Lz4dhJQWfeQ0rDHntZnbAyXnLe62" -c "man" -m "ModelName"
+# WEBUI API
+cd /home/ubuntu/stable-diffusion-webui && conda run -n diffusers --no-capture-output python launch.py --ckpt-dir ../gpu-instance-s3fs/models --api --listen --xformers
+'
 
 conda deactivate
-# bash webui.sh
-
-# DRIVERS
-# sudo apt-get install nvidia-driver-510 nvidia-utils-510 -y
 
 # REBOOT
 sudo reboot
+
+# EOF
+
+# OLD METHODS
+
+# pip install git+https://github.com/facebookresearch/xformers@1d31a3a#egg=xformers
+
+# PYTHON
+# sudo add-apt-repository ppa:deadsnakes/ppa -y
+# sudo apt update
+# sudo apt upgrade -y
+# sudo apt install python3.10 python3-pip python3-venv python-is-python3 python3.10-distutils -y
+# curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
+# sudo ln -sf /usr/bin/pip3 /usr/bin/pip
+# sudo ln -sf /usr/bin/python3.10 /usr/bin/python3
+
+# CONDA
+# cd ${HOME}
+# wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
+# bash ~/miniconda.sh -b -p $HOME/miniconda
+# export PATH=${HOME}/miniconda/bin:$PATH
+# conda init zsh
+
+# DRIVERS
+# sudo apt-get install nvidia-driver-510 nvidia-utils-510 -y
