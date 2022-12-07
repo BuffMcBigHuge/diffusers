@@ -90,3 +90,6 @@ python ../../scripts/convert_diffusers_to_original_stable_diffusion.py --model_p
 
 # get hash
 python gethash.py --checkpoint_path "$MODEL_OUTPUT_DIR/${MODEL_KEY}.ckpt"
+
+# delete training files
+rmdir $TRAINING_OUTPUT_DIR
