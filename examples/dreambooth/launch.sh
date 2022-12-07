@@ -66,7 +66,7 @@ accelerate launch --num_cpu_threads_per_process 8 train_dreambooth.py \
   --learning_rate=1e-6 \
   --lr_scheduler="constant" \
   --lr_warmup_steps=0 \
-  --num_class_images=200 \
+  --num_class_images=100 \
   --sample_batch_size=0 \
   --max_train_steps=$TRAIN_STEPS \
   --save_interval=$TRAIN_STEPS \
