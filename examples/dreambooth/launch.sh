@@ -77,6 +77,9 @@ accelerate launch --num_cpu_threads_per_process 8 train_dreambooth.py \
   --instance_data_dir="$HOME/gpu-instance-s3fs/uploads/$USERID"\
   --class_data_dir="$HOME/gpu-instance-s3fs/classes/$CLASS_KEY"
 
+
+echo "Finalizing Model"
+
 #--save_sample_prompt="photo of ${USERID}" \
 #--num_samples=0 \
 #--concepts_list="concepts_list.json"
@@ -93,4 +96,4 @@ python ../../scripts/convert_diffusers_to_original_stable_diffusion.py --model_p
 python gethash.py --checkpoint_path "$MODEL_OUTPUT_DIR/${MODEL_KEY}.ckpt"
 
 # delete training files
-rmdir $TRAINING_OUTPUT_DIR
+rm -rf $TRAINING_OUTPUT_DIR
