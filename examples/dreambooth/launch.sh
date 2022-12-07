@@ -21,7 +21,10 @@ export MODEL_VAE="$HOME/default-models/sd-vae-ft-mse"
 # export MODEL_NAME="runwayml/stable-diffusion-v1-5"
 # export MODEL_NAME="CompVis/stable-diffusion-v1-4"
 # export MODEL_VAE="stabilityai/sd-vae-ft-mse"
-export OUTPUT_DIR="$HOME/gpu-instance-s3fs/models/$USERID"
+
+export UPLOADS_OUTPUT_DIR="$HOME/gpu-instance-s3fs/uploads/$USERID"
+export MODEL_OUTPUT_DIR="$HOME/gpu-instance-s3fs/models/$USERID"
+export TRAINING_OUTPUT_DIR="$HOME/gpu-instance-s3fs/training/$USERID"
 
 echo "=================="
 echo "RUNNING DREAMBOOTH TRAINING"
@@ -37,12 +40,12 @@ echo "=================="
 echo "=================="
 echo "Convert HEIC to JPG"
 echo "=================="
-python heictojpg.py "$HOME/gpu-instance-s3fs/uploads/$USERID"
+python heictojpg.py "${UPLOADS_OUTPUT_DIR}"
 
 echo "=================="
 echo "Resize images to 512x512"
 echo "=================="
-python resize_images.py "$HOME/gpu-instance-s3fs/uploads/$USERID"
+python resize_images.py "${UPLOADS_OUTPUT_DIR}"
 
 echo "=================="
 echo "Running Training"
@@ -50,7 +53,7 @@ echo "=================="
 accelerate launch --num_cpu_threads_per_process 8 train_dreambooth.py \
   --pretrained_model_name_or_path=$MODEL_NAME \
   --pretrained_vae_name_or_path=$MODEL_VAE \
-  --output_dir=$OUTPUT_DIR \
+  --output_dir=$TRAINING_OUTPUT_DIR \
   --revision="fp16" \
   --gradient_accumulation_steps=1 --gradient_checkpointing \
   --with_prior_preservation --prior_loss_weight=1.0 \
@@ -83,7 +86,7 @@ echo "Convert to SD CPKT"
 echo "=================="
 
 # convert to ckpt
-python ../../scripts/convert_diffusers_to_original_stable_diffusion.py --model_path "$OUTPUT_DIR/$TRAIN_STEPS" --checkpoint_path "$OUTPUT_DIR/${MODEL_KEY}.ckpt"
+python ../../scripts/convert_diffusers_to_original_stable_diffusion.py --model_path "$TRAINING_OUTPUT_DIR/$TRAIN_STEPS" --checkpoint_path "$MODEL_OUTPUT_DIR/${MODEL_KEY}.ckpt"
 
 # get hash
-python gethash.py --checkpoint_path "$OUTPUT_DIR/${MODEL_KEY}.ckpt"
+python gethash.py --checkpoint_path "$MODEL_OUTPUT_DIR/${MODEL_KEY}.ckpt"
