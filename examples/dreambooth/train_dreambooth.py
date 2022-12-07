@@ -5,6 +5,7 @@ import random
 import json
 import math
 import os
+import sys
 from contextlib import nullcontext
 from pathlib import Path
 from typing import Optional
@@ -470,7 +471,7 @@ def main(args):
 
                 with torch.autocast("cuda"), torch.inference_mode():
                     for example in tqdm(
-                        sample_dataloader, desc="Generating class images", disable=not accelerator.is_local_main_process
+                        sample_dataloader, desc="Generating class images", disable=not accelerator.is_local_main_process, file=sys.stdout
                     ):
                         images = pipeline(example["prompt"]).images
 
@@ -610,7 +611,7 @@ def main(args):
     if not args.not_cache_latents:
         latents_cache = []
         text_encoder_cache = []
-        for batch in tqdm(train_dataloader, desc="Caching latents"):
+        for batch in tqdm(train_dataloader, desc="Caching latents", file=sys.stdout):
             with torch.no_grad():
                 batch["pixel_values"] = batch["pixel_values"].to(accelerator.device, non_blocking=True, dtype=weight_dtype)
                 batch["input_ids"] = batch["input_ids"].to(accelerator.device, non_blocking=True)
@@ -709,7 +710,7 @@ def main(args):
                 sample_dir = os.path.join(save_dir, "samples")
                 os.makedirs(sample_dir, exist_ok=True)
                 with torch.autocast("cuda"), torch.inference_mode():
-                    for i in tqdm(range(args.n_save_sample), desc="Generating samples"):
+                    for i in tqdm(range(args.n_save_sample), desc="Generating samples", file=sys.stdout):
                         images = pipeline(
                             args.save_sample_prompt,
                             negative_prompt=args.save_sample_negative_prompt,
@@ -724,7 +725,7 @@ def main(args):
             print(f"[*] Weights saved at {save_dir}")
 
     # Only show the progress bar once on each machine.
-    progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process)
+    progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process, file=sys.stdout)
     progress_bar.set_description("Steps")
     global_step = 0
     loss_avg = AverageMeter()
