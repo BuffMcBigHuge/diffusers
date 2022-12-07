@@ -1,6 +1,7 @@
 #!/bin/bash -l
 
 # DREAMBOOTH
+# git update-index --chmod=+x examples/dreambooth/launch.sh
 
 while getopts u:m:c: flag
 do
