@@ -76,7 +76,7 @@ try:
             "--cfg",
             type=str,
             default="",
-            help="guidance scale,
+            help="guidance scale",
         )
 
         opt = parser.parse_args()
@@ -122,7 +122,7 @@ try:
                 prompt,
                 height,
                 width,
-                negative_prompt,,
+                negative_prompt,
                 num_images_per_prompt=n_samples,
                 num_inference_steps=num_inference_steps,
                 guidance_scale=guidance_scale,
