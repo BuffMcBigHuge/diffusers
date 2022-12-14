@@ -33,7 +33,7 @@ echo "=================="
 
 echo "=================="
 echo "USER: $USERID"
-echo "MODEL ID: $MODEL_KEY"
+echo "MODEL ID: $MODELID"
 echo "CLASS KEY: $CLASS_KEY"
 echo "=================="
 
