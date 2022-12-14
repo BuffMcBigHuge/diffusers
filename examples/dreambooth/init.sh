@@ -81,10 +81,11 @@ cd ${HOME}
 sudo tee /etc/rc.local <<EOF
 #!/bin/bash
 su ubuntu -c 's3fs gpu-instance-s3fs ${HOME}/gpu-instance-s3fs -o passwd_file=${HOME}/.passwd-s3fs'
-su ubuntu -c 'cd ${HOME}/stable-diffusion-webui && conda run -n diffusers --no-capture-output python launch.py --ckpt-dir ../gpu-instance-s3fs/models --api --listen --xformers'
 su ubuntu -c 'cd ${HOME}/gpu-instance-api && pm2 start ecosystem.config.js --env ${NODE_ENV}'
 '
 EOF
+# We will not run the webui since we're using inference.py in diffusers
+# su ubuntu -c 'cd ${HOME}/stable-diffusion-webui && conda run -n diffusers --no-capture-output python launch.py --ckpt-dir ../gpu-instance-s3fs/models --api --listen --xformers'
 sudo chmod +x /etc/rc.local
 ##
 
@@ -105,14 +106,17 @@ cd diffusers
 pip install git+https://github.com/BuffMcBigHuge/diffusers.git
 sudo chmod +x ${HOME}/diffusers/examples/dreambooth/launch.sh
 
+# INFERENCE
+pip install gfpgan basicsr realesrgan
+
 # AUTOMATIC1111 WEBUI API
 # Installs automatic1111/stable-diffusion-webui fork
 # This fork includes modifications to API override_settings (model selector)
 # and also on dependices to work well with dreambooth (transformers, diffusion)
-cd ${HOME}
-git clone https://github.com/BuffMcBigHuge/stable-diffusion-webui.git
-cd stable-diffusion-webui
-pip install -r requirements.txt
+# cd ${HOME}
+# git clone https://github.com/BuffMcBigHuge/stable-diffusion-webui.git
+# cd stable-diffusion-webui
+# pip install -r requirements.txt
 
 # UPGRADE
 # Not sure if this is nessary anymore. SD 2.0 requirement but untest atm
