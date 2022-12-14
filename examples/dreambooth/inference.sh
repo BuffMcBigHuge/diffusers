@@ -3,7 +3,7 @@
 # INFERENCE
 # git update-index --chmod=+x examples/dreambooth/inference.sh
 
-while getopts u:m:c: flag
+while getopts u:m:t:p:n:s:q:h:w:c: flag
 do
     case "${flag}" in
         u) uid=${OPTARG};;
@@ -40,7 +40,7 @@ echo "WIDTH": "$width"
 echo "CFG": "$cfg"
 echo "=================="
 
-accelerate --num_cpu_threads_per_process 8 inference.py \
+python inference.py \
     --prompt "$prompt" 
     --negative_prompt "$negative_prompt"
     --ddim_steps "$steps" 
