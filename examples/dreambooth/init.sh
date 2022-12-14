@@ -81,8 +81,9 @@ cd ${HOME}
 sudo tee /etc/rc.local <<EOF
 #!/bin/bash
 su ubuntu -c 's3fs gpu-instance-s3fs ${HOME}/gpu-instance-s3fs -o passwd_file=${HOME}/.passwd-s3fs'
-su ubuntu -c 'cd ${HOME}/gpu-instance-api && pm2 start ecosystem.config.js --env ${NODE_ENV}'
 su ubuntu -c 'cd ${HOME}/stable-diffusion-webui && conda run -n diffusers --no-capture-output python launch.py --ckpt-dir ../gpu-instance-s3fs/models --api --listen --xformers'
+su ubuntu -c 'cd ${HOME}/gpu-instance-api && pm2 start ecosystem.config.js --env ${NODE_ENV}'
+'
 EOF
 sudo chmod +x /etc/rc.local
 ##

@@ -7,13 +7,13 @@ while getopts u:m:c: flag
 do
     case "${flag}" in
         u) uid=${OPTARG};;
-        m) model_key=${OPTARG};;
+        m) model_id=${OPTARG};;
         c) class_key=${OPTARG};;
     esac
 done
 
 export USERID=$uid # userid
-export MODEL_KEY=$model_key # modelxyz
+export MODELID=$model_id # modelid
 export CLASS_KEY=$class_key # man
 export TRAIN_STEPS=800
 
@@ -24,8 +24,7 @@ export MODEL_VAE="$HOME/default-models/sd-vae-ft-mse"
 # export MODEL_VAE="stabilityai/sd-vae-ft-mse"
 
 export UPLOADS_OUTPUT_DIR="$HOME/gpu-instance-s3fs/uploads/$USERID"
-export MODEL_OUTPUT_DIR="$HOME/gpu-instance-s3fs/models/$USERID"
-export TRAINING_OUTPUT_DIR="$HOME/gpu-instance-s3fs/training/$USERID"
+export MODEL_OUTPUT_DIR="$HOME/gpu-instance-s3fs/models/$USERID/$MODELID"
 
 echo "=================="
 echo "RUNNING DREAMBOOTH TRAINING"
@@ -34,7 +33,7 @@ echo "=================="
 
 echo "=================="
 echo "USER: $USERID"
-echo "MODEL KEY: $MODEL_KEY"
+echo "MODEL ID: $MODEL_KEY"
 echo "CLASS KEY: $CLASS_KEY"
 echo "=================="
 
@@ -54,7 +53,7 @@ echo "=================="
 accelerate launch --num_cpu_threads_per_process 8 train_dreambooth.py \
   --pretrained_model_name_or_path=$MODEL_NAME \
   --pretrained_vae_name_or_path=$MODEL_VAE \
-  --output_dir=$TRAINING_OUTPUT_DIR \
+  --output_dir=$MODEL_OUTPUT_DIR \
   --revision="fp16" \
   --gradient_accumulation_steps=1 --gradient_checkpointing \
   --with_prior_preservation --prior_loss_weight=1.0 \
@@ -77,23 +76,22 @@ accelerate launch --num_cpu_threads_per_process 8 train_dreambooth.py \
   --instance_data_dir="$HOME/gpu-instance-s3fs/uploads/$USERID"\
   --class_data_dir="$HOME/gpu-instance-s3fs/classes/$CLASS_KEY"
 
+echo "FINISHED"
 
-echo "Finalizing Model"
-
-#--save_sample_prompt="photo of ${USERID}" \
-#--num_samples=0 \
-#--concepts_list="concepts_list.json"
+# --save_sample_prompt="photo of ${USERID}" \
+# --num_samples=0 \
+# --concepts_list="concepts_list.json"
 # train_text_encoder Doesn't work with DeepSpeed?
 
-echo "=================="
-echo "Convert to SD CPKT"
-echo "=================="
+# echo "=================="
+# echo "Convert to SD CPKT"
+# echo "=================="
 
 # convert to ckpt
-python ../../scripts/convert_diffusers_to_original_stable_diffusion.py --model_path "$TRAINING_OUTPUT_DIR/$TRAIN_STEPS" --checkpoint_path "$MODEL_OUTPUT_DIR/${MODEL_KEY}.ckpt"
+# python ../../scripts/convert_diffusers_to_original_stable_diffusion.py --model_path "$TRAINING_OUTPUT_DIR/$TRAIN_STEPS" --checkpoint_path "$MODEL_OUTPUT_DIR/${MODEL_KEY}.ckpt"
 
 # get hash
-python gethash.py --checkpoint_path "$MODEL_OUTPUT_DIR/${MODEL_KEY}.ckpt"
+# python gethash.py --checkpoint_path "$MODEL_OUTPUT_DIR/${MODEL_KEY}.ckpt"
 
 # delete training files
-rm -rf $TRAINING_OUTPUT_DIR
+# rm -rf $TRAINING_OUTPUT_DIR
