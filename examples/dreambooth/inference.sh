@@ -41,9 +41,9 @@ echo "CFG": "$cfg"
 echo "=================="
 
 python inference.py \
-    --prompt "$prompt" 
-    --negative_prompt "$negative_prompt"
-    --ddim_steps "$steps" 
+    --prompt "$prompt" \
+    --negative_prompt "$negative_prompt" \
+    --ddim_steps "$steps" \
     --n_samples "$samples" \
     --height "$height" \
     --width "$width" \
