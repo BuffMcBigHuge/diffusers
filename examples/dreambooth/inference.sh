@@ -19,7 +19,7 @@ do
     esac
 done
 
-export MODEL_DIR="$HOME/gpu-instance-s3fs/models/$uid/${model_id}"
+export MODEL_DIR="$HOME/gpu-instance-s3fs/models/$uid/${model_id}/800"
 export IMAGE_OUTPUT_DIR="$HOME/gpu-instance-s3fs/outputs/$uid/${model_id}/${theme_id}"
 
 echo "=================="
@@ -44,7 +44,7 @@ python inference.py \
     --prompt "$prompt" \
     --negative_prompt "$negative_prompt" \
     --ddim_steps "$steps" \
-    --n_samples "$samples" \
+    --samples "$samples" \
     --height "$height" \
     --width "$width" \
     --cfg "$cfg" \
