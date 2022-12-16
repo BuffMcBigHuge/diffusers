@@ -181,7 +181,8 @@ def main():
         output_image = Image.fromarray(np_image)
         
         # save image to disk
-        save_image_path = os.path.join('/', f'{int(time.time())}-{secrets.token_hex(16)}.jpg')
+        reverse_timestamp = 10000000000 - int(time.time())
+        save_image_path = os.path.join(opt.outdir, f'{reverse_timestamp}-{secrets.token_hex(16)}.jpg')
         output_image.save(save_image_path, 'jpeg', quality=80)
     exit(0)
 
