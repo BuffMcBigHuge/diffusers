@@ -179,6 +179,10 @@ def main():
             weight=0.5)
         np_image = gfpgan_output_bgr[:, :, ::-1]
         output_image = Image.fromarray(np_image)
+
+        # check if path exists
+        if not os.path.isdir(opt.outdir):
+            os.makedirs(opt.outdir)
         
         # save image to disk
         reverse_timestamp = 10000000000 - int(time.time())
