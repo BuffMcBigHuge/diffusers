@@ -3,22 +3,24 @@
 # DREAMBOOTH
 # git update-index --chmod=+x examples/dreambooth/launch.sh
 
-while getopts u:m:c: flag
+while getopts u:m:c:b: flag
 do
     case "${flag}" in
         u) uid=${OPTARG};;
         m) model_id=${OPTARG};;
         c) class_key=${OPTARG};;
+        b) base=${OPTARG};;
     esac
 done
 
 export USERID=$uid # userid
 export MODELID=$model_id # modelid
 export CLASS_KEY=$class_key # man
+export BASE=$base # stable-diffusion-v1-5
 export TRAIN_STEPS=800
 
-export MODEL_NAME="$HOME/default-models/stable-diffusion-v1-5"
-export MODEL_VAE="$HOME/default-models/sd-vae-ft-mse"
+export MODEL_NAME="$HOME/gpu-instance-s3sf/default-models/$BASE" 
+export MODEL_VAE="$HOME/gpu-instance-s3sf/default-models/sd-vae-ft-mse"
 # export MODEL_NAME="runwayml/stable-diffusion-v1-5"
 # export MODEL_NAME="CompVis/stable-diffusion-v1-4"
 # export MODEL_VAE="stabilityai/sd-vae-ft-mse"
@@ -35,6 +37,7 @@ echo "=================="
 echo "USER: $USERID"
 echo "MODEL ID: $MODELID"
 echo "CLASS KEY: $CLASS_KEY"
+echo "BASE: $BASE"
 echo "=================="
 
 echo "=================="

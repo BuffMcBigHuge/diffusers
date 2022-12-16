@@ -1,5 +1,6 @@
 # inference.py
 
+import time
 import torch
 from torch import autocast
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, DDIMScheduler
@@ -180,8 +181,8 @@ def main():
         output_image = Image.fromarray(np_image)
         
         # save image to disk
-        save_image_path = os.path.join(opt.outdir, f'{secrets.token_urlsafe(16)}.jpg')
-        output_image.save(save_image_path, 'jpeg', quality=100)
+        save_image_path = os.path.join('/', f'{int(time.time())}-{secrets.token_hex(16)}.jpg')
+        output_image.save(save_image_path, 'jpeg', quality=80)
     exit(0)
 
 if __name__ == "__main__":
