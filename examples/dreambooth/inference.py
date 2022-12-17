@@ -188,6 +188,7 @@ def main():
         reverse_timestamp = 10000000000 - int(time.time())
         save_image_path = os.path.join(opt.outdir, f'{reverse_timestamp}-{secrets.token_hex(16)}.jpg')
         output_image.save(save_image_path, 'jpeg', quality=80)
+        print(f"KEY: {save_image_path}")
     exit(0)
 
 if __name__ == "__main__":

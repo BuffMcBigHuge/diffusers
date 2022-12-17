@@ -51,7 +51,7 @@ echo "=================="
 python resize_images.py "${UPLOADS_OUTPUT_DIR}"
 
 echo "=================="
-echo "Starting Training"
+echo "Running Training"
 echo "=================="
 accelerate launch --num_cpu_threads_per_process 8 train_dreambooth.py \
   --pretrained_model_name_or_path=$MODEL_NAME \
