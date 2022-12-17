@@ -19,8 +19,8 @@ export CLASS_KEY=$class_key # man
 export BASE=$base # stable-diffusion-v1-5
 export TRAIN_STEPS=800
 
-export MODEL_NAME="$HOME/gpu-instance-s3sf/default-models/$BASE" 
-export MODEL_VAE="$HOME/gpu-instance-s3sf/default-models/sd-vae-ft-mse"
+export MODEL_NAME="$HOME/default-models/$BASE" 
+export MODEL_VAE="$HOME/default-models/sd-vae-ft-mse"
 # export MODEL_NAME="runwayml/stable-diffusion-v1-5"
 # export MODEL_NAME="CompVis/stable-diffusion-v1-4"
 # export MODEL_VAE="stabilityai/sd-vae-ft-mse"
