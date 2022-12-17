@@ -3,7 +3,8 @@
 import time
 import torch
 from torch import autocast
-from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, DDIMScheduler
+from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, DDIMScheduler, HeunDiscreteScheduler
+from diffusers.utils.import_utils import is_xformers_available
 
 import cv2
 import os
@@ -107,15 +108,35 @@ def main():
         bg_upsampler=bg_upsampler)
 
     # STABLE DIFFUSION
-    scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False, set_alpha_to_one=False)
-    pipe = StableDiffusionPipeline.from_pretrained(opt.modeldir, scheduler=scheduler, safety_checker=None, torch_dtype=torch.float16)
-    pipe.enable_xformers_memory_efficient_attention()
+    # scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False, set_alpha_to_one=False)
+    # pipe = StableDiffusionPipeline.from_pretrained(opt.modeldir, scheduler=scheduler, safety_checker=None, torch_dtype=torch.float16)
+    pipe = StableDiffusionPipeline.from_pretrained(opt.modeldir, safety_checker=None, torch_dtype=torch.float16)
+    pipe.scheduler = HeunDiscreteScheduler.from_config(pipe.scheduler.config)
+    
+    if is_xformers_available():
+    try:
+        pipe.enable_xformers_memory_efficient_attention(True)
+    except Exception as e:
+        logger.warning(
+            "Could not enable memory efficient attention. Make sure xformers is installed"
+            f" correctly and a GPU is available: {e}"
+        )
+
     pipe.to("cuda")
 
     # LOAD IMG2IMG on SAME COMPONENTS (shared VRAM)
     components = pipe.components
     imgpipe = StableDiffusionImg2ImgPipeline(**components)
-    imgpipe.enable_xformers_memory_efficient_attention()
+
+    if is_xformers_available():
+    try:
+        imgpipe.enable_xformers_memory_efficient_attention(True)
+    except Exception as e:
+        logger.warning(
+            "Could not enable memory efficient attention. Make sure xformers is installed"
+            f" correctly and a GPU is available: {e}"
+        )
+
     imgpipe.to("cuda")
 
     g_cuda = None
@@ -159,7 +180,7 @@ def main():
         with autocast("cuda"), torch.inference_mode():
             image = imgpipe(
                 prompt=prompt,
-                init_image=image,
+                image=image,
                 strength=0.75,
                 negative_prompt=negative_prompt,
                 num_images_per_prompt=1,
