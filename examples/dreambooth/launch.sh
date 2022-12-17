@@ -51,7 +51,7 @@ echo "=================="
 python resize_images.py "${UPLOADS_OUTPUT_DIR}"
 
 echo "=================="
-echo "Running Training"
+echo "Starting Training"
 echo "=================="
 accelerate launch --num_cpu_threads_per_process 8 train_dreambooth.py \
   --pretrained_model_name_or_path=$MODEL_NAME \
@@ -70,7 +70,7 @@ accelerate launch --num_cpu_threads_per_process 8 train_dreambooth.py \
   --lr_scheduler="constant" \
   --lr_warmup_steps=0 \
   --num_class_images=100 \
-  --sample_batch_size=0 \
+  --sample_batch_size=1 \
   --max_train_steps=$TRAIN_STEPS \
   --save_interval=$TRAIN_STEPS \
   --n_save_sample=0 \
@@ -82,7 +82,6 @@ accelerate launch --num_cpu_threads_per_process 8 train_dreambooth.py \
 echo "FINISHED"
 
 # --save_sample_prompt="photo of ${USERID}" \
-# --num_samples=0 \
 # --concepts_list="concepts_list.json"
 # train_text_encoder Doesn't work with DeepSpeed?
 
